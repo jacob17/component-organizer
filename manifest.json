@@ -1,0 +1,10 @@
+{
+  "name": "Component Organizer",
+  "id": "1172170051047432576",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": [
+    "figma"
+  ],
+  "ui": "ui.html"
+}

@@ -1,0 +1,336 @@
+<base href="../Component Organizer/">
+<link rel="stylesheet" href="https://static.figma.com/api/figma-extension-api-0.0.1.css">
+<script src="https://unpkg.com/feather-icons"></script>
+<style>
+  /* Universal */
+  h1 {
+    font-weight: 600;
+  }
+</style>
+<style>
+  /* Onboarding */
+  body {
+    font-family: 'Inter';
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-flow: column nowrap;
+  }
+
+  .onboarding {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    flex-flow: column nowrap;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+  }
+
+  .subtitle {
+    width: 260px;
+    text-align: center;
+    margin-bottom: 30px;
+  }
+
+  .cta {
+    background-color: #1293EF;
+    color: white;
+    border: none;
+    margin-bottom: 13px;
+    line-height: 0;
+  }
+
+  form input,
+  label {
+    vertical-align: middle;
+  }
+</style>
+<style>
+  /* styleList */
+  .styleList {
+    /* display: flex; */
+    display: none;
+    flex-flow: column nowrap;
+    justify-content: flex-start;
+    height: 430px;
+    width: 100%;
+    overflow: scroll;
+    box-sizing: border-box;
+  }
+
+  .row {
+    width: 100%;
+    height: 36px;
+    display: flex;
+    flex-flow: row nowrap;
+    align-items: center;
+    padding: 0 11px;
+    box-sizing: border-box;
+  }
+
+  .componentCard {
+    justify-content: space-between;
+    border-bottom: 1px solid #E6E6E6;
+  }
+
+  .componentCard svg {
+    /* font-size: 14px; */
+    height: 18px;
+    vertical-align: baseline;
+    color: #B2B2B2;
+  }
+
+  .icons {
+    width: 35px;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .icons:hover {
+    background-color: #F5F5F5;
+  }
+
+  .icons:hover svg {
+    /* font-size: 14px; */
+    color: #000;
+  }
+
+  .rowLeft,
+  .rowRight {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .rowLeft>* {
+    margin-right: 9px;
+  }
+
+  .actions {
+    display: flex;
+    justify-content: flex-end;
+    position: absolute;
+    bottom: 0px;
+    z-index: 100;
+    box-sizing: border-box;
+    width: 100%;
+    background-color: white;
+    padding: 10px;
+  }
+</style>
+<style>
+  .b-tooltip {
+    display: inline-block;
+    font-size: 11px;
+    padding: 7.5px;
+    position: absolute;
+    text-align: center;
+  }
+
+  .b-tooltip-dark {
+    background-color: #242424;
+    color: #fff
+  }
+
+  .b-tooltip-dark::after {
+    content: "";
+    position: absolute;
+    margin-top: -6px;
+    margin-left: -5px;
+    border-left: 12px solid transparent;
+    border-right: 12px solid transparent;
+    border-bottom: 12px solid #242424;
+    right: 15px;
+    top: -2px;
+  }
+</style>
+
+<div class="onboarding">
+  <h1 style="margin-bottom: 12px;">Component Organizer</h1>
+  <p class="subtitle">Puts your design system all in one place, on canvas, as an easy visual reference.</p>
+  <button class="cta" id="startPlugin">Scan for Components</button>
+  <form action="#" title="Multiple pages function coming soon!">
+    <input type="checkbox" id="onlyCurrentPage" name="onlyCurrentPage" value="true" checked disabled readonly>
+    <label class="label" for="onlyCurrentPage">Scan current page only</label>
+  </form>
+</div>
+<div class="styleList">
+  <div class="componentList">
+    <div class="row componentCard">
+      <div class="rowLeft">
+        <input type="checkbox" id="sampleComponent1" name="sampleComponent1" value="true">
+        <label class="label" for="sampleComponent1">Icon</label>
+      </div>
+      <div class="rowRight">
+        <div class="icons" data-tooltip="Rename" data-position="center top">
+          <i data-feather="edit-3"></i>
+        </div>
+        <div class="icons" data-tooltip="Move To" data-position="center top">
+          <i data-feather="navigation"></i>
+        </div>
+        <div class="icons" data-tooltip="Delete" data-position="center top">
+          <i data-feather="trash-2"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="actions">
+    <button class="cta" id="run" style="margin-bottom: 0px;">Run</button>
+  </div>
+</div>
+
+<script>
+  let checkedList = []
+
+  document.querySelector('#startPlugin').addEventListener('click', (e) => {
+    parent.postMessage({pluginMessage: {
+      type: 'start'
+    }}, '*')
+    document.querySelector('.onboarding').style.display = 'none'
+    document.querySelector('.styleList').style.display = 'flex'
+    document.querySelector('#run').addEventListener('click', (e) => {
+      if (checkedList !== []) {
+        console.log('test')
+        parent.postMessage({
+          pluginMessage: {
+            type: 'run',
+            messageContent: checkedList
+          }
+        }, '*');
+      }
+    })
+  }
+  )
+
+  onmessage = (event) => {
+    console.log(event)
+    let objectData = event.data.pluginMessage
+
+    let componentList = document.querySelector('.componentList')
+    componentList.innerHTML = ''
+    componentList.innerHTML += `
+      <div class="row">
+        <span><span class="componentCount">${objectData.length}</span> Components found</span>
+      </div>
+      <div class="row">
+        <div class="rowLeft">
+          <input type="checkbox" id="selectAllComponent" name="selectAllComponent" value="true" data-id="selectAllComponent">
+          <label class="label" for="selectAllComponent">Select All</label>
+        </div>
+      </div>
+      <div id="componentInner">
+      </div>
+    `
+    let componentInner = document.querySelector('#componentInner')
+    objectData.forEach((component, idx) => {
+      componentInner.innerHTML += `
+      <div class="row componentCard">
+        <div class="rowLeft">
+          <input type="checkbox" id="component${idx}" name="component${idx}" value="true" data-id="${component.id}">
+          <label class="label" for="component${idx}">${component.name}</label>
+        </div>
+        <div class="rowRight">
+          <div class="icons" data-tooltip="Navigate" data-position="center top" data-id="${component.id}">
+            <i data-feather="navigation"></i>
+          </div>
+          </div>
+        </div>
+      </div>`
+      })
+    let checkedAll = document.querySelector('#selectAllComponent')
+    checkedAll.addEventListener('change', (e) => {
+      let checkedAllState = checkedAll.checked
+      // console.log(checkedAllState)
+      componentInner.querySelectorAll('input[type="checkbox"]').forEach(check => {
+        check.checked = checkedAllState
+      })
+    })
+    
+    componentList.addEventListener('change', (e) => {
+        //select all
+        componentInner.querySelectorAll('input[type="checkbox"]').forEach(check => {
+          if (!check.checked) {
+            checkedAll.checked = false
+          }
+        })
+        //checkbox
+        console.log('checked', componentInner.querySelectorAll('input[type="checkbox"]:checked'))
+        componentInner.querySelectorAll('input[type="checkbox"]:checked').forEach((div) => {
+          // console.log(checkedList)
+          let id = div.getAttribute('data-id')
+          if (!checkedList.some(e => e === id)) {
+            checkedList.push(id)
+          }
+        })
+      })
+    
+    
+    componentList.addEventListener('click', (e) => {
+      //center
+      let center = null
+      try {
+        center = e.target.closest('.icons').getAttribute('data-id')
+      } catch (error) { }
+      if (center !== null) {
+        console.log('center')
+        parent.postMessage({
+          pluginMessage: {
+            type: 'center',
+            messageContent: center
+          }
+        }, '*')
+      }
+    })
+
+    feather.replace()
+
+  }
+</script>
+<script> // Tooltip
+  showTooltip()
+  function showTooltip(options) {
+    let theme = "dark",
+      delay = 0,
+      dist = 10;
+    document.querySelector('.styleList').addEventListener("mouseover", (e) => {
+      if (!e.target.parentElement.hasAttribute('data-tooltip')) return;
+      let tooltip = document.createElement("div");
+      tooltip.className = "b-tooltip " + "b-tooltip-" + theme;
+      tooltip.innerHTML = e.target.parentElement.getAttribute('data-tooltip');
+
+      document.querySelector('.styleList').appendChild(tooltip);
+
+      let pos = e.target.parentElement.getAttribute('data-position') || "center top",
+        posHorizontal = pos.split(" ")[0];
+      posVertical = pos.split(" ")[1];
+
+      positionAt(e.target.parentElement, tooltip, posHorizontal, posVertical);
+    });
+
+    document.querySelector('.styleList').addEventListener("mouseout", function (e) {
+      if (e.target.parentElement.hasAttribute('data-tooltip')) {
+        setTimeout(function () {
+          document.querySelector('.styleList').removeChild(document.querySelector(".b-tooltip"));
+        }, delay);
+      }
+    });
+
+    function positionAt(parent, tooltip, posHorizontal, posVertical) {
+      let parentCoords = parent.getBoundingClientRect(), left, top;
+
+      left = parseInt(parentCoords.left) + ((parent.offsetWidth - tooltip.offsetWidth) / 2);
+      top = parseInt(parentCoords.bottom) + dist;
+
+      left = (left < 0) ? parseInt(parentCoords.left) : left;
+      top = (top < 0) ? parseInt(parentCoords.bottom) + dist : top;
+
+      tooltip.style.left = left + "px";
+      tooltip.style.top = top + "px";
+    }
+  };
+</script>

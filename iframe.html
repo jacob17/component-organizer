@@ -1,0 +1,262 @@
+<div class="icons" data-tooltip="Rename" data-position="center top" data-id="${component.id}">
+  <i data-feather="edit-3"></i>
+</div>
+<div class="icons" data-tooltip="Delete" data-position="center top" data-id="${component.id}">
+  <i data-feather="trash-2"></i>
+
+<script>
+
+  document.close();
+  document.addEventListener('keydown', (e) => {
+    if (e.keyCode === 80 /* P */ && !e.shiftKey && e.altKey && !e.ctrlKey && e.metaKey) {
+      // Handle the plugin re-run shortcut
+      parent.postMessage('$INTERNAL_DO_NOT_USE$RERUN_PLUGIN$', '*')
+      e.stopPropagation()
+      e.stopImmediatePropagation()
+    } else if (true) {
+      // Handle Select All, Undo and Redo in the desktop app
+      if (e.keyCode === 65 /* A */ && e.metaKey) {
+        document.execCommand('selectAll')
+      } else if (e.keyCode === 90 /* Z */ && e.metaKey) {
+        if (e.shiftKey) {
+          document.execCommand('redo')
+        } else {
+          document.execCommand('undo')
+        }
+      }
+    }
+  }, true)
+
+  function renderCssVariables(vars) {
+    return Object.entries(vars)
+      .map((entry) => entry.join(': '))
+      .join('; ') + ';'
+  }
+
+  window.addEventListener('message', function (event) {
+    if (
+      event.source === window.parent.parent &&
+      event.data &&
+      typeof event.data === 'object' &&
+      'figmaMessage' in event.data
+    ) {
+      event.stopImmediatePropagation()
+
+      const figmaMessage = event.data.figmaMessage
+
+      if (figmaMessage.type === 'THEME') {
+        const figmaStyle = document.getElementById('figma-style')
+        figmaStyle.textContent = ':root { ' + renderCssVariables(figmaMessage.payload.variables) + ' }'
+
+        const classesToRemove = []
+
+        document.documentElement.classList.forEach((value) => {
+          if (value.startsWith('figma-')) {
+            classesToRemove.push(value)
+          }
+        })
+
+        for (const className of classesToRemove) {
+          document.documentElement.classList.remove(className)
+        }
+
+        if (figmaMessage.payload.name && figmaMessage.payload.name !== 'legacy') {
+          document.documentElement.classList.add('figma-' + figmaMessage.payload.name)
+        }
+      }
+    }
+  }, true)
+
+  window.addEventListener('load', (event) => {
+    document.documentElement.classList.add('figma-light')
+  });
+
+
+
+  var __inserting = false;
+  var __groups = [];
+  var __views = [];
+  var __pages = [];
+  var __settings = { animate: false, current_group: null };
+  var __current_group = null;
+  var __current = null;
+  const __animationLength = 1000;
+  var __startTime = -1;
+  var __viewport_from;
+  var __viewport_to;
+  var __bgcolor_from;
+  var __bgcolor_to;
+  var __animation_reverse = false;
+  var __wait = false;
+  var __dragging = null;
+
+  document.querySelector('body>div').style.maxHeight = .8 * window.screen.height + 'px';
+
+  window.onmessage = async (event) => {
+    console.log('response', event.data.pluginMessage);
+    if (event.data.pluginMessage.action === 'get-views') {
+      __groups = event.data.pluginMessage.groups;
+      __pages = event.data.pluginMessage.pages;
+      __groups.forEach(gp => create_group(gp));
+      resize();
+    }
+    if (event.data.pluginMessage.action === 'get-settings') {
+      __settings = event.data.pluginMessage.settings;
+      document.querySelectorAll('#tabs>div').item(__settings.current_group ?? 0).classList.add('active');
+      document.querySelectorAll('#list>section').item(__settings.current_group ?? 0).classList.add('active');
+    }
+    else if (event.data.pluginMessage.action === 'get-viewport') {
+      __current.viewport = event.data.pluginMessage.viewport;
+      // console.log('page', __pages.find(p => p.id==__current.viewport.page));
+      document.querySelector('#list section.active .item-list:last-child .pagename').innerHTML = (__pages.find(p => p.id == __current.viewport.page) || { name: '' }).name;
+      window.parent.postMessage({ pluginMessage: '{"action": "set-views", "groups": ' + JSON.stringify(__groups) + '}' }, '*');
+      __current = null;
+    }
+    else if (event.data.pluginMessage.action === 'start-animation') {
+      __viewport_from = event.data.pluginMessage.viewport;
+      __animation_reverse = event.data.pluginMessage.reverse ? -1 : 1;
+      if (event.data.pluginMessage.bgcolor[0].type == 'SOLID' && event.data.pluginMessage.viewport.bgcolor[0].type == 'SOLID') {
+        __bgcolor_from = event.data.pluginMessage.viewport.bgcolor;
+        __bgcolor_to = event.data.pluginMessage.bgcolor;
+      }
+      else {
+        __bgcolor_from = null;
+        __bgcolor_to = null;
+      }
+      __current = null;
+      window.requestAnimationFrame(doAnimation);
+    }
+    else if (event.data.pluginMessage.action === 'upd-viewport') {
+      __current.viewport = event.data.pluginMessage.viewport;
+      __current = null;
+      window.parent.postMessage({ pluginMessage: '{"action": "set-views", "groups": ' + JSON.stringify(__groups) + '}' }, '*');
+    }
+  }
+
+  document.addEventListener('keydown', e => {
+    if (document.querySelector('body').classList.contains('mini')) {
+      if (e.key == 'ArrowLeft') {
+        document.querySelector('#prior').click();
+      }
+      else if (e.key == 'ArrowRight') {
+        document.querySelector('#next').click();
+      }
+    }
+  });
+
+  window.parent.postMessage({ pluginMessage: '{"action": "get-views"}' }, '*');
+  window.parent.postMessage({ pluginMessage: '{"action": "get-settings"}' }, '*');
+
+  document.querySelectorAll('#add-group').forEach(el => el.addEventListener('click', e => create_group(null)));
+  document.querySelectorAll('#add-view').forEach(el => el.addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+    create_view(null, current_group, current_group_idx);
+    // document.querySelector('#collapse').classList.add('enabled');
+    if (document.querySelector('body').classList.contains('mini')) {
+      document.querySelector('#dots>div.selected').classList.remove('selected');
+      document.querySelector('#dots>div:last-child').classList.add('selected');
+      document.querySelector('#prior').classList.add('enabled');
+      document.querySelector('#next').classList.remove('enabled');
+    }
+  }));
+
+  document.querySelector('#collapse').addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+    if (document.querySelectorAll('#list section.active .item-list:not(.skip-view)').length == 0) {
+      toast('Nothing to show');
+      return false;
+    }
+    document.querySelector('body').classList.add('mini');
+    if (e.altKey) {
+      const first = document.querySelector('#list section.active div.item-list:not(.skip-view)');
+      first.classList.add('selected');
+      first.querySelector('.go').click();
+    }
+    document.querySelector('#dots').innerHTML = '';
+    __groups[current_group_idx].views.forEach((v, i) => create_dot(v, i));
+    let view = current_group.querySelector('div.item-list.selected');
+    while (view && view.classList.contains('skip-view')) view = view.nextElementSibling;
+    if (!view) view = current_group.querySelector('div.item-list:not(.skip-view)');
+    document.querySelectorAll('#dots>div').item(Array.from(current_group.querySelectorAll('div.item-list')).indexOf(view)).click();
+    // change_view(__views[view?Array.from(document.querySelectorAll('#list div.item-list')).indexOf(view):0]);
+    // document.querySelector('#title').innerHTML = view.querySelector('.title').innerHTML;
+    // document.querySelector('#reference').innerHTML = view.querySelector('.number').innerHTML;
+    current_group.querySelectorAll('.empty-state').forEach(el => el.hidden = false);
+    // document.querySelectorAll('#collapse,#divider,#settings,#copy-url,#update,#remove,#add').forEach(el => el.hidden = true);
+    document.querySelectorAll('#list section.active').forEach(el => el.classList.remove('active'));
+    current_group.classList.add('active');
+    resize();
+    setTimeout(e => document.querySelector('#dots>div.selected').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' }), 50);
+  });
+
+  document.querySelector('#expand').addEventListener('click', e => {
+    document.querySelector('body').classList.remove('mini');
+    // document.querySelectorAll('#empty,#hint,#add3').forEach(el => el.hidden = true);
+    // document.querySelectorAll('#collapse,#divider,#settings,#copy-url,#update,#remove,#add').forEach(el => el.hidden = false);
+    window.parent.postMessage({ pluginMessage: '{"action": "resize", "height": ' + document.querySelector('body>div').clientHeight + '}' }, '*');
+  });
+
+  document.querySelector('#prior').addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    let current_view = current_group.querySelector('div.item-list.selected') || current_group.querySelector('div.item-list');
+    if (current_view) current_view = current_view.previousElementSibling;
+    while (current_view && current_view.classList.contains('skip-view')) current_view = current_view.previousElementSibling;
+    if (current_view) {
+      const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+      const current_view_idx = Array.from(current_view.parentNode.children).indexOf(current_view);
+      document.querySelectorAll('#list div.item-list.selected,#dots>div.selected').forEach(el => el.classList.remove('selected'));
+      current_view.classList.add('selected');
+      document.querySelectorAll('#dots>div')[current_view_idx].classList.add('selected');
+      change_view(__groups[current_group_idx].views[current_view_idx]);
+      document.querySelector('#dots>div.selected').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      // document.querySelector('#title').innerHTML = view.querySelector('.title').innerHTML;
+      // document.querySelector('#reference').innerHTML = view.querySelector('.number').innerHTML;
+    }
+  });
+
+  document.querySelector('#next').addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    let current_view = current_group.querySelector('div.item-list.selected') || current_group.querySelector('div.item-list');
+    if (current_view) current_view = current_view.nextElementSibling;
+    while (current_view && current_view.classList.contains('skip-view')) current_view = current_view.nextElementSibling;
+    if (current_view) {
+      const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+      const current_view_idx = Array.from(current_view.parentNode.children).indexOf(current_view);
+      document.querySelectorAll('#list div.item-list.selected,#dots>div.selected').forEach(el => el.classList.remove('selected'));
+      current_view.classList.add('selected');
+      document.querySelectorAll('#dots>div')[current_view_idx].classList.add('selected');
+      change_view(__groups[current_group_idx].views[current_view_idx]);
+      document.querySelector('#dots>div.selected').scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      // document.querySelector('#title').innerHTML = view.querySelector('.title').innerHTML;
+      // document.querySelector('#reference').innerHTML = view.querySelector('.number').innerHTML;
+    }
+  });
+
+  document.querySelectorAll('#update').forEach(el => el.addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    const current_view = current_group.querySelector('div.item-list.selected');
+    if (current_view) {
+      const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+      const current_view_idx = Array.from(current_view.parentNode.children).indexOf(current_view);
+      __current = __groups[current_group_idx].views[current_view_idx];
+      window.parent.postMessage({ pluginMessage: '{"action": "get-viewport"}' }, '*');
+      toast('View updated');
+    }
+  }));
+
+  document.querySelectorAll('#remove').forEach(el => el.addEventListener('click', e => {
+    const current_group = document.querySelector('#list section.active');
+    const current_view = current_group.querySelector('div.item-list.selected');
+    if (current_view) {
+      const current_group_idx = Array.from(current_group.parentNode.children).indexOf(current_group);
+      const current_view_idx = Array.from(current_view.parentNode.children).indexOf(current_view);
+      __groups[current_group_idx].views.splice(current_view_idx, 1);
+      current_view.remove();
+      let pos = 0;
+      // document.querySelectorAll('#list .item-list').forEach(el => el.querySelector('.number').innerHTML = ++pos+'.');
+      toast('View removed');
+    }
+  }))
+</script>
