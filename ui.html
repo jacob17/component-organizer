@@ -1,3 +1,6 @@
+<!-- READ THIS FIRST -->
+<!-- Figma does not allow a file structure for its UI, and therefore I have written HTML, CSS and JavaScript altogether in one file. This is common for Figma Plugins (see Unsplash plugin's source code as example) -->
+
 <base href="../Component Organizer/">
 <link rel="stylesheet" href="https://static.figma.com/api/figma-extension-api-0.0.1.css">
 <script src="https://unpkg.com/feather-icons"></script>
@@ -149,8 +152,8 @@
     top: -2px;
   }
 </style>
-
-<div class="onboarding">
+<!-- 1st page of UI shown to user -->
+<div class="onboarding"> 
   <h1 style="margin-bottom: 12px;">Component Organizer</h1>
   <p class="subtitle">Puts your design system all in one place, on canvas, as an easy visual reference.</p>
   <button class="cta" id="startPlugin">Scan for Components</button>
@@ -159,6 +162,7 @@
     <label class="label" for="onlyCurrentPage">Scan current page only</label>
   </form>
 </div>
+<!-- UI after users press start -->
 <div class="styleList">
   <div class="componentList">
     <div class="row componentCard">
@@ -186,16 +190,17 @@
 
 <script>
   let checkedList = []
-
+  // Handles when user start the plugin
   document.querySelector('#startPlugin').addEventListener('click', (e) => {
     parent.postMessage({pluginMessage: {
-      type: 'start'
+      type: 'start' // send message to Figma
     }}, '*')
+    // show the second page of UI
     document.querySelector('.onboarding').style.display = 'none'
     document.querySelector('.styleList').style.display = 'flex'
+    // add handler for organization function
     document.querySelector('#run').addEventListener('click', (e) => {
       if (checkedList !== []) {
-        console.log('test')
         parent.postMessage({
           pluginMessage: {
             type: 'run',
@@ -206,11 +211,11 @@
     })
   }
   )
-
+  // receive component node data (names, location) from Figma
   onmessage = (event) => {
-    console.log(event)
     let objectData = event.data.pluginMessage
-
+    
+    // create HTML and add names to the UI
     let componentList = document.querySelector('.componentList')
     componentList.innerHTML = ''
     componentList.innerHTML += `
@@ -242,10 +247,10 @@
         </div>
       </div>`
       })
+    // handle select all component function
     let checkedAll = document.querySelector('#selectAllComponent')
     checkedAll.addEventListener('change', (e) => {
       let checkedAllState = checkedAll.checked
-      // console.log(checkedAllState)
       componentInner.querySelectorAll('input[type="checkbox"]').forEach(check => {
         check.checked = checkedAllState
       })
@@ -261,7 +266,6 @@
         //checkbox
         console.log('checked', componentInner.querySelectorAll('input[type="checkbox"]:checked'))
         componentInner.querySelectorAll('input[type="checkbox"]:checked').forEach((div) => {
-          // console.log(checkedList)
           let id = div.getAttribute('data-id')
           if (!checkedList.some(e => e === id)) {
             checkedList.push(id)
@@ -269,9 +273,8 @@
         })
       })
     
-    
+    // center the canvas view to user designated component
     componentList.addEventListener('click', (e) => {
-      //center
       let center = null
       try {
         center = e.target.closest('.icons').getAttribute('data-id')
@@ -291,12 +294,14 @@
 
   }
 </script>
-<script> // Tooltip
+<script>
+  // creates tooltip that is similar to Figma's style
   showTooltip()
   function showTooltip(options) {
     let theme = "dark",
       delay = 0,
       dist = 10;
+    // if mouseover icon
     document.querySelector('.styleList').addEventListener("mouseover", (e) => {
       if (!e.target.parentElement.hasAttribute('data-tooltip')) return;
       let tooltip = document.createElement("div");
@@ -311,7 +316,7 @@
 
       positionAt(e.target.parentElement, tooltip, posHorizontal, posVertical);
     });
-
+    // remove if mouseout
     document.querySelector('.styleList').addEventListener("mouseout", function (e) {
       if (e.target.parentElement.hasAttribute('data-tooltip')) {
         setTimeout(function () {
@@ -319,7 +324,7 @@
         }, delay);
       }
     });
-
+    // handle where the tooltip will display
     function positionAt(parent, tooltip, posHorizontal, posVertical) {
       let parentCoords = parent.getBoundingClientRect(), left, top;
 
